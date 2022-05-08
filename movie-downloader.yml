@@ -105,9 +105,9 @@ services:
       traefik.http.routers.radarr.entrypoints: websecure
       traefik.http.routers.radarr.tls.certresolver: le
       traefik.http.routers.radarr.tls.domains[0].main: "*.local.viryadh.dev"
-  ombi: 
-    image: linuxserver/ombi 
-    container_name: ombi
+  overseerr: 
+    image: fallenbagel/jellyseerr
+    container_name: overseerr
     networks:
       traefik-route:
     environment:
@@ -117,14 +117,13 @@ services:
       #- BASE_URL=/ombi #optional 
     labels:
       traefik.enable: true
-      traefik.http.routers.ombi.rule: Host(`ombi.local.viryadh.dev`) && ClientIP(`192.168.0.0/16`, `172.16.0.0/12`)
+      traefik.http.routers.ombi.rule: Host(`overseer.local.viryadh.dev`)
       traefik.http.routers.ombi.entrypoints: websecure
-      traefik.http.routers.ombi.service: ombi
-      traefik.http.services.ombi.loadbalancer.server.port: 3579
+      traefik.http.services.ombi.loadbalancer.server.port: 5055
       traefik.http.routers.ombi.tls.certresolver: le
       traefik.http.routers.ombi.tls.domains[0].main: "*.local.viryadh.dev"
     volumes: 
-      - ${ROOT}/Config/ombi:/config 
+      - ${ROOT}/Config/overseerr:/app/config 
     restart: unless-stopped
   bazarr:
     image: lscr.io/linuxserver/bazarr
