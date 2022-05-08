@@ -1,0 +1,178 @@
+version: "2.4"
+services:
+  vpn:
+    container_name: vpn
+    image: dperson/openvpn-client
+    restart: unless-stopped
+    devices:
+      - /dev/net/tun
+    cap_add:
+      - net_admin # required to modify network interfaces
+    networks:
+      traefik-route:
+      default:
+
+    environment:
+      - FIREWALL=""
+      - ROUTE=192.168.18.0/24
+      - VPNPORT_1=8112
+    volumes:
+      - ${ROOT}/Config/vpn:/vpn # OpenVPN configuration
+    labels:
+      traefik.enable: true
+      traefik.http.routers.qbittorrent.rule: Host(`torrent.local.viryadh.dev`)
+      traefik.http.routers.qbittorrent.entrypoints: websecure
+      traefik.http.routers.qbittorrent.service: qbittorrent
+      traefik.http.services.qbittorrent.loadbalancer.server.port: 8112
+      traefik.http.routers.qbittorrent.tls.certresolver: le
+      traefik.http.routers.qbittorrent.tls.domains[0].main: "*.local.viryadh.dev"
+  qbittorrent:
+    container_name: qbittorrent
+    image: linuxserver/qbittorrent
+    restart: unless-stopped
+    network_mode: service:vpn
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ}
+      - WEBUI_PORT=8112
+    volumes:
+      - ${ROOT}/Downloads:/downloads # downloads folder
+      - ${ROOT}/Config/qbittorrent:/config # config files
+  jackett:
+    container_name: jackett
+    image: linuxserver/jackett:latest
+    restart: unless-stopped
+    networks:
+      traefik-route:
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/Torrent:/downloads # place where to put .torrent files for manual download
+      - ${ROOT}/Config/jackett:/config # config files
+    labels:
+      traefik.enable: true
+      traefik.http.routers.jackett.rule: Host(`jackett.local.viryadh.dev`)
+      traefik.http.routers.jackett.entrypoints: websecure
+      traefik.http.routers.jackett.tls.certresolver: le
+      traefik.http.routers.jackett.tls.domains[0].main: "*.local.viryadh.dev"
+  sonarr:
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    restart: unless-stopped
+    links:
+      - vpn:vpn
+    networks:
+      traefik-route:
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/Config/sonarr:/config # config files
+      - ${ROOT}/Videos/Anime:/tv # tv shows folder
+      - ${ROOT}/Downloads:/downloads # download folder
+    labels:
+      traefik.enable: true
+      traefik.http.routers.sonarr.rule: Host(`sonarr.local.viryadh.dev`)
+      traefik.http.routers.sonarr.entrypoints: websecure
+      traefik.http.routers.sonarr.tls.certresolver: le
+      traefik.http.routers.sonarr.tls.domains[0].main: "*.local.viryadh.dev"
+  radarr:
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    restart: unless-stopped
+    links:
+      - vpn:vpn
+    networks:
+      traefik-route:
+    environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/Config/radarr:/config # config files
+      - ${ROOT}/Videos/Movies:/movies # movies folder
+      - ${ROOT}/Downloads:/downloads # download folder
+    labels:
+      traefik.enable: true
+      traefik.http.routers.radarr.rule: Host(`radarr.local.viryadh.dev`)
+      traefik.http.routers.radarr.entrypoints: websecure
+      traefik.http.routers.radarr.tls.certresolver: le
+      traefik.http.routers.radarr.tls.domains[0].main: "*.local.viryadh.dev"
+  ombi: 
+    image: linuxserver/ombi 
+    container_name: ombi
+    networks:
+      traefik-route:
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      #- BASE_URL=/ombi #optional 
+    labels:
+      traefik.enable: true
+      traefik.http.routers.ombi.rule: Host(`ombi.local.viryadh.dev`) && ClientIP(`192.168.0.0/16`, `172.16.0.0/12`)
+      traefik.http.routers.ombi.entrypoints: websecure
+      traefik.http.routers.ombi.service: ombi
+      traefik.http.services.ombi.loadbalancer.server.port: 3579
+      traefik.http.routers.ombi.tls.certresolver: le
+      traefik.http.routers.ombi.tls.domains[0].main: "*.local.viryadh.dev"
+    volumes: 
+      - ${ROOT}/Config/ombi:/config 
+    restart: unless-stopped
+  bazarr:
+    image: lscr.io/linuxserver/bazarr
+    container_name: bazarr
+    networks:
+      traefik-route:
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/Config/bazarr:/config
+      - ${ROOT}/Videos/Movies:/movies #optional
+      - ${ROOT}/Videos/Anime:/tv #optional
+    restart: unless-stopped
+    labels:
+      traefik.enable: true
+      traefik.http.routers.bazarr.rule: Host(`bazarr.local.viryadh.dev`)
+      traefik.http.routers.bazarr.entrypoints: websecure
+      traefik.http.routers.bazarr.tls.certresolver: le
+      traefik.http.routers.bazarr.tls.domains[0].main: "*.local.viryadh.dev"
+
+  jellyfin-server:
+    container_name: jellyfin-server
+    image: jellyfin/jellyfin
+    restart: unless-stopped
+    user: ${PUID}:${PGID}
+    network_mode: host
+    ports:
+      - 8291:8096
+    labels:
+      traefik.enable: true
+      traefik.http.routers.jellyfin.rule: Host(`media.local.viryadh.dev`)
+      traefik.http.routers.jellyfin.entrypoints: websecure
+      traefik.http.routers.jellyfin.service: jellyfin-server
+      traefik.http.services.jellyfin-server.loadbalancer.server.port: 8096
+      traefik.http.routers.jellyfin.tls.certresolver: le
+      traefik.http.routers.jellyfin.tls.domains[0].main: "*.local.viryadh.dev"
+      traefik.http.routers.jellyfin-local.rule: Host(`media.toshibalinux.local`)
+      traefik.http.routers.jellyfin-local.entrypoints: web
+      traefik.http.routers.jellyfin-local.service: jellyfin-server
+    environment:
+      - TZ=${TZ} # timezone, defined in .env
+    volumes:
+      - ${ROOT}/Config/jellyfin/Config:/config
+      - ${ROOT}/Config/jellyfin/Cache:/cache
+      - ${ROOT}/Videos:/media
+networks:
+    default:
+    traefik-route:
+      external: true
