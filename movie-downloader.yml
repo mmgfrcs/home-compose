@@ -71,6 +71,8 @@ services:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:sonarr
+      - TP_THEME=dark
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${ROOT}/Config/sonarr:/config # config files
@@ -94,6 +96,8 @@ services:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=ghcr.io/gilbn/theme.park:radarr
+      - TP_THEME=dark
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${ROOT}/Config/radarr:/config # config files
