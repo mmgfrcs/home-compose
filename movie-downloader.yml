@@ -189,6 +189,9 @@ services:
     ports:
       - 8888:8888
       - 55555:55555
+    networks:
+      traefik-route:
+    restart: unless-stopped
     labels:
       traefik.enable: true
       traefik.http.routers.resilio.rule: Host(`sync.local.viryadh.dev`)
