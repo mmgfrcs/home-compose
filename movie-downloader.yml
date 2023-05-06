@@ -200,6 +200,7 @@ services:
       traefik.http.routers.resilio.tls.certresolver: le
       traefik.http.routers.resilio.tls.domains[0].main: "*.local.viryadh.dev"
       traefik.http.services.resilio-web.loadbalancer.server.port: 8888
+      traefik.tcp.routers.resilio-sync.rule: HostSNI(`*`)
       traefik.tcp.routers.resilio-sync.entrypoints: sync
       traefik.tcp.routers.resilio-sync.service: resilio-sync
       traefik.tcp.services.resilio-sync.loadbalancer.server.port: 55555
