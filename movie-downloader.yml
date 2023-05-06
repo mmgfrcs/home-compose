@@ -43,7 +43,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       VPN_CT_NAME: vpn
-      QBITTORRENT_SERVER: http://10.2.0.2
+      QBITTORRENT_SERVER: localhost
+      QBITTORRENT_PORT: 8112
       VPN_GATEWAY: 10.2.0.1
       VPN_IF_NAME: protonwire0
   qbittorrent:
