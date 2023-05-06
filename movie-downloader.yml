@@ -28,6 +28,12 @@ services:
       traefik.http.services.qbittorrent.loadbalancer.server.port: 8112
       traefik.http.routers.qbittorrent.tls.certresolver: le
       traefik.http.routers.qbittorrent.tls.domains[0].main: "*.local.viryadh.dev"
+    healthcheck:
+      test: protonwire healthcheck --silent --container
+      interval: 20s
+      retries: 5
+      start_period: 10s
+      timeout: 10s
   vpn-natmap:
     container_name: vpn-natmap
     image: ghcr.io/soxfor/qbittorrent-natmap:1.1.0
@@ -36,6 +42,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      VPN_CT_NAME: vpn
       QBITTORRENT_SERVER: http://10.2.0.2
   qbittorrent:
     container_name: qbittorrent
@@ -54,6 +61,11 @@ services:
     container_name: jackett
     image: linuxserver/jackett:latest
     restart: unless-stopped
+    healthcheck:
+      test: curl -s --fail http://localhost:9117/UI/Dashboard
+      interval: 5s
+      retries: 5
+      timeout: 3s
     networks:
       traefik-route:
     environment:
