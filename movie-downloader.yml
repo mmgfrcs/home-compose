@@ -44,6 +44,8 @@ services:
     environment:
       VPN_CT_NAME: vpn
       QBITTORRENT_SERVER: http://10.2.0.2
+      VPN_GATEWAY: 10.2.0.1
+      VPN_IF_NAME: protonwire0
   qbittorrent:
     container_name: qbittorrent
     image: linuxserver/qbittorrent
