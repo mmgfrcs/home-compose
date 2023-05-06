@@ -28,6 +28,13 @@ services:
       traefik.http.services.qbittorrent.loadbalancer.server.port: 8112
       traefik.http.routers.qbittorrent.tls.certresolver: le
       traefik.http.routers.qbittorrent.tls.domains[0].main: "*.local.viryadh.dev"
+  vpn-natmap:
+    container_name: vpn-natmap
+    image: ghcr.io/soxfor/qbittorrent-natmap:1.1.0
+    restart: unless-stopped
+    network_mode: service:vpn
+    environment:
+      QBITTORRENT_SERVER: http://10.2.0.2
   qbittorrent:
     container_name: qbittorrent
     image: linuxserver/qbittorrent
