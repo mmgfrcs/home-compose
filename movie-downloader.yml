@@ -16,7 +16,7 @@ services:
       net.ipv4.conf.all.rp_filter: 2
       net.ipv6.conf.all.disable_ipv6: 1
     environment:
-      PROTONVPN_SERVER: sg-31.protonvpn.net
+      PROTONVPN_SERVER: "${VPN_SERVER}"
       WIREGUARD_PRIVATE_KEY: ${WG_PRIVATE}
     volumes:
       - ${ROOT}/Config/vpn:/vpn # OpenVPN configuration
