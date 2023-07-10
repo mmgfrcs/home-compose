@@ -18,6 +18,7 @@ services:
     environment:
       PROTONVPN_SERVER: "${VPN_SERVER}"
       WIREGUARD_PRIVATE_KEY: ${WG_PRIVATE}
+      IPCHECK_URL: https://api.ipify.org/
     volumes:
       - ${ROOT}/Config/vpn:/vpn # OpenVPN configuration
     labels:
