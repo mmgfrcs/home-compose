@@ -63,13 +63,8 @@ services:
       - ${ROOT}/Config/qbittorrent:/config # config files
   jackett:
     container_name: jackett
-    image: linuxserver/jackett:latest
+    image: lscr.io/linuxserver/prowlarr:latest
     restart: unless-stopped
-    healthcheck:
-      test: curl -s --fail http://localhost:9117/UI/Dashboard
-      interval: 5s
-      retries: 5
-      timeout: 3s
     networks:
       traefik-route:
     environment:
