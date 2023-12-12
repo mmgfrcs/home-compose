@@ -179,8 +179,8 @@ services:
     user: ${PUID}:${PGID}
     network_mode: host
     group_add:
-      - 44  # add video group
-      - 109 # add render group
+      - "44"  # add video group
+      - "109" # add render group
     devices:
       - /dev/dri:/dev/dri
     ports:
