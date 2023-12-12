@@ -234,7 +234,6 @@ services:
       traefik.udp.routers.resilio-sync.entrypoints: sync-udp
       traefik.udp.routers.resilio-sync.service: resilio-sync
       traefik.udp.services.resilio-sync.loadbalancer.server.port: 55555
-    restart: unless-stopped
 networks:
     default:
     traefik-route:
