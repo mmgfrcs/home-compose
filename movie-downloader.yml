@@ -198,6 +198,7 @@ services:
       traefik.http.routers.jellyfin-local.service: jellyfin-server
     environment:
       - TZ=${TZ} # timezone, defined in .env
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     volumes:
       - ${ROOT}/Config/jellyfin/Config:/config
       - ${ROOT}/Config/jellyfin/Cache:/cache
