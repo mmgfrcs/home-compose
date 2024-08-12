@@ -63,7 +63,7 @@ services:
       - TZ=${TZ}
       - WEBUI_PORT=8112
     volumes:
-      - ${ROOT}/Data/Downloads:/downloads # downloads folder
+      - ${ROOT}/Data/Downloads:/data/Downloads # downloads folder
       - ${ROOT}/Config/qbittorrent:/config # config files
   prowlarr:
     container_name: prowlarr
