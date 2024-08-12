@@ -32,7 +32,7 @@ services:
     healthcheck:
       test: protonwire healthcheck --silent --container
       interval: 20s
-      retries: 5
+      retries: 3
       start_period: 10s
       timeout: 10s
   vpn-natmap:
@@ -53,16 +53,20 @@ services:
     image: linuxserver/qbittorrent
     restart: unless-stopped
     network_mode: service:vpn
+    depends_on:
+      vpn:
+        condition: service_healthy
+        restart: true
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ}
       - WEBUI_PORT=8112
     volumes:
-      - ${ROOT}/Downloads:/downloads # downloads folder
+      - ${ROOT}/Data/Downloads:/downloads # downloads folder
       - ${ROOT}/Config/qbittorrent:/config # config files
-  jackett:
-    container_name: jackett
+  prowlarr:
+    container_name: prowlarr
     image: lscr.io/linuxserver/prowlarr:latest
     restart: unless-stopped
     networks:
@@ -73,7 +77,6 @@ services:
       - TZ=${TZ} # timezone, defined in .env
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/Torrent:/downloads # place where to put .torrent files for manual download
       - ${ROOT}/Config/jackett:/config # config files
     labels:
       traefik.enable: true
@@ -98,8 +101,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${ROOT}/Config/sonarr:/config # config files
-      - ${ROOT}/Videos/Anime:/tv # tv shows folder
-      - ${ROOT}/Downloads:/downloads # download folder
+      - ${ROOT}/Data:/data
     labels:
       traefik.enable: true
       traefik.http.routers.sonarr.rule: Host(`sonarr.local.viryadh.dev`)
@@ -123,8 +125,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${ROOT}/Config/radarr:/config # config files
-      - ${ROOT}/Videos/Movies:/movies # movies folder
-      - ${ROOT}/Downloads:/downloads # download folder
+      - ${ROOT}/Data:/data
     labels:
       traefik.enable: true
       traefik.http.routers.radarr.rule: Host(`radarr.local.viryadh.dev`)
@@ -162,8 +163,7 @@ services:
       - TZ=${TZ}
     volumes:
       - ${ROOT}/Config/bazarr:/config
-      - ${ROOT}/Videos/Movies:/movies #optional
-      - ${ROOT}/Videos/Anime:/tv #optional
+      - ${ROOT}/Data/Videos:/data/media #optional
     restart: unless-stopped
     labels:
       traefik.enable: true
@@ -202,7 +202,7 @@ services:
     volumes:
       - ${ROOT}/Config/jellyfin/Config:/config
       - ${ROOT}/Config/jellyfin/Cache:/cache
-      - ${ROOT}/Videos:/media
+      - ${ROOT}/Data/Videos:/data/media
   resilio-sync:
     image: lscr.io/linuxserver/resilio-sync:latest
     container_name: resilio-sync
@@ -213,7 +213,7 @@ services:
     volumes:
       - ${ROOT}/Config/resilio:/config
       - ${ROOT}/Sync:/downloads
-      - ${ROOT}/Downloads:/sync
+      - ${ROOT}/Data/Downloads:/sync
     ports:
       - 8888:8888
       - 55555:55555
