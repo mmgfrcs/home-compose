@@ -80,7 +80,7 @@ services:
       - NZBGET_PASS=${NZBGET_PASS}
     volumes:
       - ${CONF_ROOT}/Config/nzbget:/config
-      - ${ROOT}/Data/Downloads/Usenet:/data/Downloads
+      - ${ROOT}/Data/Downloads/Usenet:/data/Downloads/Usenet
   prowlarr:
     container_name: prowlarr
     image: lscr.io/linuxserver/prowlarr:latest
