@@ -2,25 +2,30 @@ version: "2.4"
 services:
   vpn:
     container_name: vpn
-    image: ghcr.io/tprasadtp/protonwire
+    image: qmcgaw/gluetun
     restart: unless-stopped
     devices:
       - /dev/net/tun
     cap_add:
       - net_admin # required to modify network interfaces
-    networks:
-      traefik-route:
-      default:
+    ports:
+      - 8112:8112
+      - 6789:6789
     init: true
     sysctls:
       net.ipv4.conf.all.rp_filter: 2
       net.ipv6.conf.all.disable_ipv6: 1
     environment:
-      PROTONVPN_SERVER: "${VPN_SERVER}"
-      WIREGUARD_PRIVATE_KEY: ${WG_PRIVATE}
-      IPCHECK_URL: https://api.ipify.org/
+      VPN_SERVICE_PROVIDER: protonvpn
+      VPN_TYPE: wireguard
+      SERVER_COUNTRIES: Singapore
+      WIREGUARD_PRIVATE_KEY: "${WG_PRIVATE}"
+      PORT_FORWARD_ONLY: on
+      VPN_PORT_FORWARDING: on
+      WIREGUARD_ADDRESSES: 10.2.0.2/32
+      VPN_PORT_FORWARDING_UP_COMMAND: "/bin/sh -c 'wget -O- --retry-connrefused --post-data 'json={\"listen_port\":{{PORTS}}}' http://127.0.0.1:8112/api/v2/app/setPreferences 2>&1'"
     volumes:
-      - ${ROOT}/Config/vpn:/vpn # OpenVPN configuration
+      - ${CONF_ROOT}/Config/vpn:/vpn # OpenVPN configuration
     labels:
       traefik.enable: true
       traefik.http.routers.qbittorrent.rule: Host(`torrent.local.viryadh.dev`)
@@ -29,25 +34,18 @@ services:
       traefik.http.services.qbittorrent.loadbalancer.server.port: 8112
       traefik.http.routers.qbittorrent.tls.certresolver: le
       traefik.http.routers.qbittorrent.tls.domains[0].main: "*.local.viryadh.dev"
+      traefik.http.routers.nzbget.rule: Host(`nzbget.local.viryadh.dev`)
+      traefik.http.routers.nzbget.entrypoints: websecure
+      traefik.http.routers.nzbget.service: nzbget
+      traefik.http.services.nzbget.loadbalancer.server.port: 6789
+      traefik.http.routers.nzbget.tls.certresolver: le
+      traefik.http.routers.nzbget.tls.domains[0].main: "*.local.viryadh.dev"
     healthcheck:
-      test: protonwire healthcheck --silent --container
+      test: /gluetun-entrypoint healthcheck
       interval: 20s
       retries: 3
       start_period: 10s
       timeout: 10s
-  vpn-natmap:
-    container_name: vpn-natmap
-    image: ghcr.io/soxfor/qbittorrent-natmap:1.1.0
-    restart: unless-stopped
-    network_mode: service:vpn
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      VPN_CT_NAME: vpn
-      QBITTORRENT_SERVER: localhost
-      QBITTORRENT_PORT: 8112
-      VPN_GATEWAY: 10.2.0.1
-      VPN_IF_NAME: protonwire0
   qbittorrent:
     container_name: qbittorrent
     image: linuxserver/qbittorrent
@@ -64,20 +62,38 @@ services:
       - WEBUI_PORT=8112
     volumes:
       - ${ROOT}/Data/Downloads:/data/Downloads # downloads folder
-      - ${ROOT}/Config/qbittorrent:/config # config files
+      - ${CONF_ROOT}/Config/qbittorrent:/config # config files
+  nzbget:
+    container_name: nzbget
+    image: lscr.io/linuxserver/nzbget:latest
+    restart: unless-stopped
+    network_mode: service:vpn
+    depends_on:
+      vpn:
+        condition: service_healthy
+        restart: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - NZBGET_USER=${NZBGET_USER}
+      - NZBGET_PASS=${NZBGET_PASS}
+    volumes:
+      - ${CONF_ROOT}/Config/nzbget:/config
+      - ${ROOT}/Data/Downloads/Usenet:/data/Downloads
   prowlarr:
     container_name: prowlarr
     image: lscr.io/linuxserver/prowlarr:latest
     restart: unless-stopped
-    networks:
-      traefik-route:
+    ports:
+      - 9696:9696
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
       - TZ=${TZ} # timezone, defined in .env
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/Config/jackett:/config # config files
+      - ${CONF_ROOT}/Config/jackett:/config # config files
     labels:
       traefik.enable: true
       traefik.http.routers.jackett.rule: Host(`jackett.local.viryadh.dev`)
@@ -90,8 +106,8 @@ services:
     restart: unless-stopped
     links:
       - vpn:vpn
-    networks:
-      traefik-route:
+    ports:
+      - 8989:8989
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
@@ -100,7 +116,7 @@ services:
       - TP_THEME=dark
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/Config/sonarr:/config # config files
+      - ${CONF_ROOT}/Config/sonarr:/config # config files
       - ${ROOT}/Data:/data
     labels:
       traefik.enable: true
@@ -114,8 +130,8 @@ services:
     restart: unless-stopped
     links:
       - vpn:vpn
-    networks:
-      traefik-route:
+    ports:
+      - 7878:7878
     environment:
       - PUID=${PUID} # default user id, defined in .env
       - PGID=${PGID} # default group id, defined in .env
@@ -124,7 +140,7 @@ services:
       - TP_THEME=dark
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/Config/radarr:/config # config files
+      - ${CONF_ROOT}/Config/radarr:/config # config files
       - ${ROOT}/Data:/data
     labels:
       traefik.enable: true
@@ -133,10 +149,11 @@ services:
       traefik.http.routers.radarr.tls.certresolver: le
       traefik.http.routers.radarr.tls.domains[0].main: "*.local.viryadh.dev"
   overseerr: 
-    image: fallenbagel/jellyseerr
+    image: ghcr.io/seerr-team/seerr:v3.1.0
+    init: true
     container_name: overseerr
-    networks:
-      traefik-route:
+    ports:
+      - 5055:5055
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -144,25 +161,25 @@ services:
       #- BASE_URL=/ombi #optional 
     labels:
       traefik.enable: true
-      traefik.http.routers.ombi.rule: Host(`overseer.local.viryadh.dev`)
+      traefik.http.routers.ombi.rule: Host(`jellyseer.local.viryadh.dev`)
       traefik.http.routers.ombi.entrypoints: websecure
       traefik.http.services.ombi.loadbalancer.server.port: 5055
       traefik.http.routers.ombi.tls.certresolver: le
       traefik.http.routers.ombi.tls.domains[0].main: "*.local.viryadh.dev"
     volumes: 
-      - ${ROOT}/Config/overseerr:/app/config 
+      - ${CONF_ROOT}/Config/overseerr:/app/config 
     restart: unless-stopped
   bazarr:
     image: lscr.io/linuxserver/bazarr
     container_name: bazarr
-    networks:
-      traefik-route:
+    ports:
+      - 6767:6767
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - ${ROOT}/Config/bazarr:/config
+      - ${CONF_ROOT}/Config/bazarr:/config
       - ${ROOT}/Data/Videos:/data/media #optional
     restart: unless-stopped
     labels:
@@ -171,20 +188,19 @@ services:
       traefik.http.routers.bazarr.entrypoints: websecure
       traefik.http.routers.bazarr.tls.certresolver: le
       traefik.http.routers.bazarr.tls.domains[0].main: "*.local.viryadh.dev"
-
   jellyfin-server:
     container_name: jellyfin-server
-    image: jellyfin/jellyfin
+    image: linuxserver/jellyfin:10.11.7
     restart: unless-stopped
-    user: ${PUID}:${PGID}
     network_mode: host
     group_add:
       - "44"  # add video group
-      - "109" # add render group
+      - "104" # add render group
+      - "106"
     devices:
       - /dev/dri:/dev/dri
     ports:
-      - 8291:8096
+      - 8096:8096
     labels:
       traefik.enable: true
       traefik.http.routers.jellyfin.rule: Host(`media.local.viryadh.dev`)
@@ -197,28 +213,33 @@ services:
       traefik.http.routers.jellyfin-local.entrypoints: web
       traefik.http.routers.jellyfin-local.service: jellyfin-server
     environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
       - TZ=${TZ} # timezone, defined in .env
+      - DOCKER_MODS=linuxserver/mods:jellyfin-opencl-intel
+      #- JELLYFIN_DATA_DIR=/config/data #Uncomment for Jellyfin Images
+      #- JELLYFIN_CONFIG_DIR=/config #Uncomment for Jellyfin Images
+      #- JELLYFIN_LOG_DIR=/config/log #Uncomment for Jellyfin Images
+      #- JELLYFIN_CACHE_DIR=/config/cache #Uncomment for Jellyfin Images
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0
     volumes:
-      - ${ROOT}/Config/jellyfin/Config:/config
-      - ${ROOT}/Config/jellyfin/Cache:/cache
+      - ${CONF_ROOT}/Config/jellyfin-lsio/Config:/config
+      - ${CONF_ROOT}/Config/jellyfin-lsio/Cache:/cache
       - ${ROOT}/Data/Videos:/data/Videos
   resilio-sync:
-    image: lscr.io/linuxserver/resilio-sync:latest
+    image: lscr.io/linuxserver/resilio-sync:2.7.3
     container_name: resilio-sync
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - ${ROOT}/Config/resilio:/config
+      - ${CONF_ROOT}/Config/resilio:/config
       - ${ROOT}/Sync:/downloads
       - ${ROOT}/Data/Downloads:/sync
     ports:
       - 8888:8888
       - 55555:55555
-    networks:
-      traefik-route:
     restart: unless-stopped
     labels:
       traefik.enable: true
@@ -235,7 +256,3 @@ services:
       traefik.udp.routers.resilio-sync.entrypoints: sync-udp
       traefik.udp.routers.resilio-sync.service: resilio-sync
       traefik.udp.services.resilio-sync.loadbalancer.server.port: 55555
-networks:
-    default:
-    traefik-route:
-      external: true
